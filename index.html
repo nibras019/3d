@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Spline Switcher</title>
+
+  <!-- Spline Viewer -->
+  <script type="module" src="https://unpkg.com/@splinetool/viewer@1.10.16/build/spline-viewer.js"></script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .spline-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    spline-viewer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 1s ease, visibility 1s ease;
+    }
+
+    spline-viewer.active {
+      opacity: 1;
+      visibility: visible;
+      z-index: 0;
+    }
+
+    .circle-buttons {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 20px;
+      z-index: 10;
+    }
+
+    .circle {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid #fff;
+      transition: transform 0.2s ease;
+    }
+
+    .circle:hover {
+      transform: scale(1.1);
+    }
+
+    .red { background: red; }
+    .blue { background: blue; }
+    .black { background: black; }
+  </style>
+</head>
+<body>
+
+  <!-- 🎥 All 3 Spline Scenes (Only one shown at a time) -->
+  <div class="spline-container">
+    <spline-viewer id="spline1" class="active" url="https://prod.spline.design/l7ttf40I2oP-YwWK/scene.splinecode"></spline-viewer>
+    <spline-viewer id="spline2" url="https://prod.spline.design/Rb8td91iSzbJ04iY/scene.splinecode"></spline-viewer>
+    <spline-viewer id="spline3" url="https://prod.spline.design/21wEKvx7J3oz2o2C/scene.splinecode"></spline-viewer>
+  </div>
+
+  <!-- 🎯 Color Circle Buttons -->
+  <div class="circle-buttons">
+    <div class="circle red" onclick="switchScene(1)"></div>
+    <div class="circle blue" onclick="switchScene(2)"></div>
+    <div class="circle black" onclick="switchScene(3)"></div>
+  </div>
+
+  <script>
+    const viewers = [
+      document.getElementById("spline1"),
+      document.getElementById("spline2"),
+      document.getElementById("spline3")
+    ];
+
+    function switchScene(index) {
+      viewers.forEach((viewer, i) => {
+        if (i === index - 1) {
+          viewer.classList.add("active");
+        } else {
+          viewer.classList.remove("active");
+        }
+      });
+    }
+  </script>
+</body>
+</html>
