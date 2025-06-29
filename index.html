@@ -2,28 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Interactive Spline Switcher</title>
-
   <!-- Spline Viewer -->
   <script type="module" src="https://unpkg.com/@splinetool/viewer@1.10.16/build/spline-viewer.js"></script>
-
   <style>
+    * {
+      box-sizing: border-box;
+    }
+    
     html, body {
       margin: 0;
       padding: 0;
       overflow: hidden;
       background: #000;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      touch-action: manipulation;
     }
-
+    
     .spline-container {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
+      height: 100dvh; /* Dynamic viewport height for mobile */
     }
-
+    
     spline-viewer {
       position: absolute;
       top: 0;
@@ -32,75 +37,378 @@
       height: 100%;
       opacity: 0;
       visibility: hidden;
-      transition: opacity 1s ease, visibility 1s ease;
+      transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      transform: translateZ(0); /* Hardware acceleration */
+      will-change: opacity, visibility;
     }
-
+    
     spline-viewer.active {
       opacity: 1;
       visibility: visible;
-      z-index: 0;
+      z-index: 1;
     }
-
-    .circle-buttons {
+    
+    .loading-overlay {
       position: absolute;
-      bottom: 30px;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 1;
+      transition: opacity 0.5s ease;
+    }
+    
+    .loading-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-top: 3px solid #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .circle-buttons {
+      position: fixed;
+      bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
-      gap: 20px;
+      gap: 15px;
       z-index: 10;
+      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 50px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
-
+    
     .circle {
-      width: 50px;
-      height: 50px;
+      width: 45px;
+      height: 45px;
       border-radius: 50%;
       cursor: pointer;
-      border: 2px solid #fff;
-      transition: transform 0.2s ease;
+      border: 2px solid rgba(255, 255, 255, 0.8);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
-
-    .circle:hover {
+    
+    .circle::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      transition: all 0.3s ease;
+    }
+    
+    .circle:active::before {
+      width: 100%;
+      height: 100%;
+    }
+    
+    .circle:hover,
+    .circle:focus {
       transform: scale(1.1);
+      border-color: #fff;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     }
-
-    .red { background: red; }
-    .blue { background: blue; }
-    .black { background: black; }
+    
+    .circle.active {
+      transform: scale(1.15);
+      border-color: #fff;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+    }
+    
+    .red { 
+      background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+    }
+    .blue { 
+      background: linear-gradient(135deg, #4ecdc4, #44a08d);
+    }
+    .black { 
+      background: linear-gradient(135deg, #2c3e50, #34495e);
+    }
+    
+    /* Mobile specific styles */
+    @media (max-width: 768px) {
+      .circle-buttons {
+        bottom: 15px;
+        gap: 12px;
+        padding: 8px 16px;
+      }
+      
+      .circle {
+        width: 40px;
+        height: 40px;
+        border-width: 2px;
+      }
+      
+      .circle:hover {
+        transform: scale(1.05); /* Reduced hover effect on mobile */
+      }
+      
+      .circle.active {
+        transform: scale(1.1);
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .circle-buttons {
+        bottom: 10px;
+        gap: 10px;
+        padding: 6px 12px;
+      }
+      
+      .circle {
+        width: 35px;
+        height: 35px;
+      }
+    }
+    
+    /* Landscape orientation adjustments */
+    @media (orientation: landscape) and (max-height: 500px) {
+      .circle-buttons {
+        bottom: 10px;
+        gap: 10px;
+      }
+      
+      .circle {
+        width: 35px;
+        height: 35px;
+      }
+    }
+    
+    /* High DPI displays */
+    @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+      .circle {
+        border-width: 1.5px;
+      }
+    }
+    
+    /* Accessibility improvements */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+    
+    /* Focus styles for keyboard navigation */
+    .circle:focus {
+      outline: 2px solid #fff;
+      outline-offset: 2px;
+    }
+    
+    /* Error state */
+    .error-message {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 0, 0, 0.9);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      z-index: 1000;
+      display: none;
+    }
   </style>
 </head>
 <body>
-
+  <!-- Loading overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+  </div>
+  
+  <!-- Error message -->
+  <div class="error-message" id="errorMessage">
+    <h3>Failed to load 3D scene</h3>
+    <p>Please check your internet connection and try again.</p>
+  </div>
+  
   <!-- 🎥 All 3 Spline Scenes (Only one shown at a time) -->
   <div class="spline-container">
-    <spline-viewer id="spline1" class="active" url="https://prod.spline.design/l7ttf40I2oP-YwWK/scene.splinecode"></spline-viewer>
-    <spline-viewer id="spline2" url="https://prod.spline.design/Rb8td91iSzbJ04iY/scene.splinecode"></spline-viewer>
-    <spline-viewer id="spline3" url="https://prod.spline.design/21wEKvx7J3oz2o2C/scene.splinecode"></spline-viewer>
+    <spline-viewer 
+      id="spline1" 
+      class="active" 
+      url="https://prod.spline.design/l7ttf40I2oP-YwWK/scene.splinecode"
+      loading="eager">
+    </spline-viewer>
+    <spline-viewer 
+      id="spline2" 
+      url="https://prod.spline.design/Rb8td91iSzbJ04iY/scene.splinecode"
+      loading="lazy">
+    </spline-viewer>
+    <spline-viewer 
+      id="spline3" 
+      url="https://prod.spline.design/21wEKvx7J3oz2o2C/scene.splinecode"
+      loading="lazy">
+    </spline-viewer>
   </div>
-
+  
   <!-- 🎯 Color Circle Buttons -->
   <div class="circle-buttons">
-    <div class="circle red" onclick="switchScene(1)"></div>
-    <div class="circle blue" onclick="switchScene(2)"></div>
-    <div class="circle black" onclick="switchScene(3)"></div>
+    <button class="circle red active" onclick="switchScene(1)" aria-label="Switch to red scene" tabindex="0"></button>
+    <button class="circle blue" onclick="switchScene(2)" aria-label="Switch to blue scene" tabindex="0"></button>
+    <button class="circle black" onclick="switchScene(3)" aria-label="Switch to black scene" tabindex="0"></button>
   </div>
-
+  
   <script>
-    const viewers = [
-      document.getElementById("spline1"),
-      document.getElementById("spline2"),
-      document.getElementById("spline3")
-    ];
-
-    function switchScene(index) {
-      viewers.forEach((viewer, i) => {
-        if (i === index - 1) {
-          viewer.classList.add("active");
-        } else {
-          viewer.classList.remove("active");
+    class SplineSwitcher {
+      constructor() {
+        this.viewers = [
+          document.getElementById("spline1"),
+          document.getElementById("spline2"),
+          document.getElementById("spline3")
+        ];
+        this.buttons = document.querySelectorAll('.circle');
+        this.loadingOverlay = document.getElementById('loadingOverlay');
+        this.errorMessage = document.getElementById('errorMessage');
+        this.currentScene = 1;
+        this.loadedScenes = new Set([1]); // First scene loads immediately
+        this.isTransitioning = false;
+        
+        this.init();
+      }
+      
+      init() {
+        // Hide loading overlay after initial load
+        setTimeout(() => {
+          this.loadingOverlay.classList.add('hidden');
+        }, 2000);
+        
+        // Add error handling for spline viewers
+        this.viewers.forEach((viewer, index) => {
+          viewer.addEventListener('error', () => {
+            this.showError();
+          });
+          
+          viewer.addEventListener('load', () => {
+            this.loadedScenes.add(index + 1);
+          });
+        });
+        
+        // Add keyboard support
+        document.addEventListener('keydown', (e) => {
+          if (e.key >= '1' && e.key <= '3') {
+            this.switchScene(parseInt(e.key));
+          }
+        });
+        
+        // Add touch event optimization
+        this.buttons.forEach((button, index) => {
+          button.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.switchScene(index + 1);
+          }, { passive: false });
+        });
+        
+        // Preload scenes on interaction
+        this.preloadScenes();
+      }
+      
+      switchScene(index) {
+        if (this.isTransitioning || index === this.currentScene) return;
+        
+        this.isTransitioning = true;
+        
+        // Update buttons
+        this.buttons.forEach((button, i) => {
+          button.classList.toggle('active', i === index - 1);
+        });
+        
+        // Update viewers
+        this.viewers.forEach((viewer, i) => {
+          if (i === index - 1) {
+            viewer.classList.add("active");
+          } else {
+            viewer.classList.remove("active");
+          }
+        });
+        
+        this.currentScene = index;
+        
+        // Add haptic feedback on supported devices
+        if (navigator.vibrate) {
+          navigator.vibrate(50);
         }
+        
+        // Reset transition lock
+        setTimeout(() => {
+          this.isTransitioning = false;
+        }, 800);
+      }
+      
+      preloadScenes() {
+        // Preload other scenes after initial load
+        setTimeout(() => {
+          this.viewers.forEach((viewer, index) => {
+            if (!this.loadedScenes.has(index + 1)) {
+              viewer.setAttribute('loading', 'eager');
+            }
+          });
+        }, 3000);
+      }
+      
+      showError() {
+        this.loadingOverlay.classList.add('hidden');
+        this.errorMessage.style.display = 'block';
+        setTimeout(() => {
+          this.errorMessage.style.display = 'none';
+        }, 5000);
+      }
+    }
+    
+    // Global function for onclick handlers
+    function switchScene(index) {
+      window.splineSwitcher.switchScene(index);
+    }
+    
+    // Initialize when DOM is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      window.splineSwitcher = new SplineSwitcher();
+    });
+    
+    // Performance optimization
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        // Register service worker for caching if needed
       });
     }
+    
+    // Prevent zoom on double tap
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', (e) => {
+      const now = (new Date()).getTime();
+      if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+      }
+      lastTouchEnd = now;
+    }, false);
   </script>
 </body>
 </html>
